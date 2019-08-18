@@ -83,7 +83,8 @@ Copy  "$(ProjectDir)\libs\win\Half-2_3_d.dll" "$(TargetDir)"
 Copy  "$(ProjectDir)\libs\win\Iex-2_3_d.dll" "$(TargetDir)"
 Copy  "$(ProjectDir)\libs\win\IexMath-2_3_d.dll" "$(TargetDir)"
 Copy  "$(ProjectDir)\libs\win\Imath-2_3_d.dll" "$(TargetDir)"
-
+Copy  "$(ProjectDir)\libs\alembic-LICENSE.txt" "$(TargetDir)"
+Copy  "$(ProjectDir)\libs\OpenEXR-LICENSE.txt" "$(TargetDir)"
 Erase "$(TargetPath)"</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
