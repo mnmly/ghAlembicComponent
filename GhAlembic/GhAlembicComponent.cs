@@ -19,6 +19,7 @@ namespace MNML
         [DllImport("ghAlembic")] static extern bool AbcWriterOpen(IntPtr instance, String filepath);
         [DllImport("ghAlembic")] static extern void AbcWriterClose(IntPtr instance);
         [DllImport("ghAlembic")] static extern void AbcWriterAddPolyMesh(IntPtr instance, String name,
+            String materialName,
             float[] vertices, int numVertices,
             float[] normals, int numNormals,
             float[] uvs, int numUVs,
@@ -55,13 +56,15 @@ namespace MNML
             // to import lists or trees of values, modify the ParamAccess flag.
             pManager.AddMeshParameter("Mesh", "M", "Mesh", GH_ParamAccess.list);
             pManager.AddTextParameter("Object Names", "N", "Object Names", GH_ParamAccess.list);
+            pManager.AddTextParameter("Material Names", "N", "Material Names", GH_ParamAccess.list);
             pManager.AddTextParameter("Output Path", "P", "Output Path", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Flip Axis", "F", "Map Rhino Z to OBJ Y", GH_ParamAccess.item, true);
             pManager.AddGenericParameter("Socket", "S", "Established Websocket Client", GH_ParamAccess.item);
 
             pManager[1].Optional = true;
-            pManager[3].Optional = true;
+            pManager[2].Optional = true;
             pManager[4].Optional = true;
+            pManager[5].Optional = true;
 
 
             // If you want to change properties of certain parameters, 
@@ -93,6 +96,7 @@ namespace MNML
             // We'll start by declaring variables and assigning them starting values.
             var meshes = new List<Mesh>();
             var objectNames = new List<String>();
+            var materialNames = new List<String>();
 
             var flip = true;
 
@@ -100,22 +104,26 @@ namespace MNML
 
 
             if (!DA.GetDataList(0, meshes)) return;
-            if (!DA.GetData(2, ref path)) return;
-            if (!DA.GetData(4, ref socket)) { socket = null; }
+            if (!DA.GetData(3, ref path)) return;
+            if (!DA.GetData(5, ref socket)) { socket = null; }
             DA.GetDataList(1, objectNames);
-            DA.GetData(3, ref flip);
-
+            DA.GetDataList(2, materialNames);
+            DA.GetData(4, ref flip);
 
             Action action = () =>
             {
 
                 instance = AbcWriterCreateInstance();
                 AbcWriterOpen(instance, path);
+
+                var names = new List<String>();
+
                 for (int j = 0; j < meshes.Count; j++)
                 {
                     var mesh = meshes[j];
                     var name = objectNames.Count > j ? objectNames[j] : ("object-" + j);
-
+                    var materialName = materialNames.Count > j ? materialNames[j] : null;
+                    names.Add(name);
                     mesh.Faces.ConvertQuadsToTriangles();
                     mesh.Normals.ComputeNormals();
 
@@ -136,6 +144,7 @@ namespace MNML
                     }
 
                     AbcWriterAddPolyMesh(instance, "/" + name,
+                        materialName,
                         mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
                         normals.ToArray(), normals.Count,
                         uvs.ToArray(), uvs.Count,
@@ -143,6 +152,12 @@ namespace MNML
                 }
 
                 AbcWriterClose(instance);
+
+                if (socket != null) {
+                    var namesString = String.Join("\", \"", names.ToArray());
+                    String message = String.Format("{{\"action\": \"update\", \"filepath\": \"{0}\", \"objects\": [\"{1}\"]}}", path, namesString);
+                    socket.Send(message);
+                }
             };
 
          
