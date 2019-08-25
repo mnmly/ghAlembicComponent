@@ -122,7 +122,7 @@ namespace MNML
                 {
                     var mesh = meshes[j];
                     var name = objectNames.Count > j ? objectNames[j] : ("object-" + j);
-                    var materialName = materialNames.Count > j ? materialNames[j] : null;
+                    var materialName = materialNames.Count > j ? materialNames[j] : "Default";
                     names.Add(name);
                     mesh.Faces.ConvertQuadsToTriangles();
                     mesh.Normals.ComputeNormals();
