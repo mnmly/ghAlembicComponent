@@ -60,16 +60,14 @@ namespace MNML
             pManager.AddTextParameter("Output Path", "P", "Output Path", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Flip Axis", "F", "Map Rhino Z to OBJ Y", GH_ParamAccess.item, true);
             pManager.AddGenericParameter("Socket", "S", "Established Websocket Client", GH_ParamAccess.item);
+            pManager.AddTextParameter("Collection Name", "C", "Name of Collection", GH_ParamAccess.item, "Collection-Grasshopper");
 
             pManager[1].Optional = true;
             pManager[2].Optional = true;
             pManager[4].Optional = true;
             pManager[5].Optional = true;
+            pManager[6].Optional = true;
 
-
-            // If you want to change properties of certain parameters, 
-            // you can use the pManager instance to access them by index:
-            //pManager[0].Optional = true;
         }
 
         /// <summary>
@@ -97,7 +95,7 @@ namespace MNML
             var meshes = new List<Mesh>();
             var objectNames = new List<String>();
             var materialNames = new List<String>();
-
+            var collectionName = "";
             var flip = true;
 
             String path = "";
@@ -109,6 +107,7 @@ namespace MNML
             DA.GetDataList(1, objectNames);
             DA.GetDataList(2, materialNames);
             DA.GetData(4, ref flip);
+            DA.GetData(6, ref collectionName);
 
             Action action = () =>
             {
@@ -155,7 +154,7 @@ namespace MNML
 
                 if (socket != null) {
                     var namesString = String.Join("\", \"", names.ToArray());
-                    String message = String.Format("{{\"action\": \"update\", \"filepath\": \"{0}\", \"objects\": [\"{1}\"]}}", path, namesString);
+                    String message = String.Format("{{\"action\": \"update\", \"filepath\": \"{0}\", \"objects\": [\"{1}\"], \"collection_name\": \"{2}\"}}", path, namesString, collectionName);
                     socket.Send(message);
                 }
             };
