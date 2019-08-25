@@ -56,8 +56,8 @@ namespace MNML
             // All parameters must have the correct access type. If you want 
             // to import lists or trees of values, modify the ParamAccess flag.
             pManager.AddMeshParameter("Mesh", "M", "Mesh", GH_ParamAccess.list);
-            pManager.AddTextParameter("Object Names", "N", "Object Names", GH_ParamAccess.list);
-            pManager.AddTextParameter("Material Names", "N", "Material Names", GH_ParamAccess.list);
+            pManager.AddTextParameter("Object Names", "ON", "Object Names", GH_ParamAccess.list);
+            pManager.AddTextParameter("Material Names", "MN", "Material Names", GH_ParamAccess.list);
             pManager.AddTextParameter("Output Path", "P", "Output Path", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Flip Axis", "F", "Map Rhino Z to OBJ Y", GH_ParamAccess.item, true);
             pManager.AddGenericParameter("Socket", "S", "Established Websocket Client", GH_ParamAccess.item);
