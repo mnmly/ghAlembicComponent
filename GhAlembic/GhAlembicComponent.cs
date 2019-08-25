@@ -7,6 +7,7 @@ using Grasshopper;
 using Grasshopper.Kernel;
 using Rhino.Geometry;
 using WebSocketSharp;
+using Newtonsoft.Json;
 
 namespace MNML
 
@@ -153,9 +154,15 @@ namespace MNML
                 AbcWriterClose(instance);
 
                 if (socket != null) {
-                    var namesString = String.Join("\", \"", names.ToArray());
-                    String message = String.Format("{{\"action\": \"update\", \"filepath\": \"{0}\", \"objects\": [\"{1}\"], \"collection_name\": \"{2}\"}}", path, namesString, collectionName);
-                    socket.Send(message);
+                    var payload = new Payload
+                    {
+                        Action = "update",
+                        FilePath = path,
+                        ObjectNames = names,
+                        CollectionName = collectionName
+                    };
+                    var jsonString = JsonConvert.SerializeObject(payload);
+                    socket.Send(jsonString);
                 }
             };
 
@@ -198,5 +205,21 @@ namespace MNML
         {
             get { return new Guid("c3d04175-545f-428f-9ffb-e13ebec1d265"); }
         }
-    }
+    };
+
+    [JsonObject(MemberSerialization.OptIn)]
+    public class Payload
+    {
+        [JsonProperty(PropertyName = "action")]
+        public string Action { get; set; }
+
+        [JsonProperty(PropertyName = "filepath")]
+        public string FilePath { get; set; }
+
+        [JsonProperty(PropertyName = "collectionName")]
+        public string CollectionName { get; set; }
+
+        [JsonProperty(PropertyName = "objectNames")]
+        public List<string> ObjectNames { get; set; }
+    };
 }
