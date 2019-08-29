@@ -110,65 +110,55 @@ namespace MNML
             DA.GetData(4, ref flip);
             DA.GetData(6, ref collectionName);
 
-            Action action = () =>
-            {
+            //Action action = () =>
+            //{
 
-                instance = AbcWriterCreateInstance();
-                AbcWriterOpen(instance, path);
-
-                var names = new List<String>();
-
-                for (int j = 0; j < meshes.Count; j++)
-                {
-                    var mesh = meshes[j];
-                    var name = objectNames.Count > j ? objectNames[j] : ("object-" + j);
-                    var materialName = materialNames.Count > j ? materialNames[j] : "Default";
-                    names.Add(name);
-                    mesh.Faces.ConvertQuadsToTriangles();
-                    mesh.Normals.ComputeNormals();
-
-                    List<float> uvs = new List<float>();
-                    List<float> normals = new List<float>();
-
-                    foreach (var uv in mesh.TextureCoordinates)
-                    {
-                        uvs.Add(uv.X);
-                        uvs.Add(uv.Y);
-                    }
-
-                    foreach (var normal in mesh.Normals)
-                    {
-                        normals.Add(normal.X);
-                        normals.Add(normal.Y);
-                        normals.Add(normal.Z);
-                    }
-
-                    AbcWriterAddPolyMesh(instance, "/" + name,
-                        materialName,
-                        mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
-                        normals.ToArray(), normals.Count,
-                        uvs.ToArray(), uvs.Count,
-                        mesh.Faces.ToIntArray(true), mesh.Faces.Count * 3, mesh.Faces.Count, flip);
-                }
-
-                AbcWriterClose(instance);
-
-                if (socket != null) {
-                    var payload = new Payload
-                    {
-                        Action = "update",
-                        FilePath = path,
-                        ObjectNames = names,
-                        CollectionName = collectionName
-                    };
-                    var jsonString = JsonConvert.SerializeObject(payload);
-                    socket.Send(jsonString);
-                }
-            };
+            //};
 
          
-            // Finally assign the spiral to the output parameter.
-            debouncer.Debounce(action);
+            //// Finally assign the spiral to the output parameter.
+            //    debouncer.Debounce(action);
+
+            instance = AbcWriterCreateInstance();
+            AbcWriterOpen(instance, path);
+
+            var names = new List<String>();
+
+            for (int j = 0; j < meshes.Count; j++)
+            {
+                var mesh = meshes[j];
+                var name = objectNames.Count > j ? objectNames[j] : ("object-" + j);
+                var materialName = materialNames.Count > j ? materialNames[j] : "Default";
+                names.Add(name);
+                mesh.Faces.ConvertQuadsToTriangles();
+                mesh.Normals.ComputeNormals();
+
+                var uvs = mesh.TextureCoordinates.ToFloatArray();
+                var normals = mesh.Normals.ToFloatArray();
+
+                AbcWriterAddPolyMesh(instance, "/" + name,
+                    materialName,
+                    mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
+                    normals, normals.Length,
+                    uvs, uvs.Length,
+                    mesh.Faces.ToIntArray(true), mesh.Faces.Count * 3, mesh.Faces.Count, flip);
+            }
+
+            AbcWriterClose(instance);
+
+            if (socket != null)
+            {
+                var payload = new Payload
+                {
+                    Action = "update",
+                    FilePath = path,
+                    ObjectNames = names,
+                    CollectionName = collectionName
+                };
+                var jsonString = JsonConvert.SerializeObject(payload);
+                socket.Send(jsonString);
+            }
+
         }
 
         /// <summary>
