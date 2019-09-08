@@ -141,7 +141,76 @@ namespace MNML
             }
             else if (geom is ArcCurve)
             {
-                ProcessCurve(geom.ToNurbsCurve() as NurbsCurve, name, flip);
+                var arc = geom as ArcCurve;
+                var c = geom.ToNurbsCurve();
+                if (arc.IsClosed)
+                {
+                    var center = arc.Arc.Center;
+                    var radius = arc.Arc.Radius;
+
+                    var points = new List<double>();
+                    var weights = new List<double>();
+                    for (var i = 0; i < c.Points.Count; i++)
+                    {
+                        var p = new Point3d();
+                        if (i % 2 == 0)
+                        {
+                            points.Add(c.Points[i].X - p.X);
+                            points.Add(c.Points[i].Y - p.Y);
+                            points.Add(c.Points[i].Z - p.Z);
+                        }
+                        else
+                        {
+                            p = arc.Arc.Center;
+                            p.X *= 1.0 - c.Points[i].Weight;
+                            p.Y *= 1.0 - c.Points[i].Weight;
+                            p.Z *= 1.0 - c.Points[i].Weight;
+                            points.Add(c.Points[i].X + p.X);
+                            points.Add(c.Points[i].Y + p.Y);
+                            points.Add(c.Points[i].Z + p.Z);
+                        }
+                        weights.Add(c.Points[i].Weight);
+                    }
+
+                    var cc = new NurbsCurve(c.Degree, c.Points.Count - 1);
+                    for (var i = 0; i < cc.Points.Count; i++)
+                    {
+                        var w = 1.0;
+                        cc.Points.SetPoint(i, points[i * 3 + 0], points[i * 3 + 1], points[i * 3 + 2], w);
+                    }
+                    // @TODO: use the proper api from Alembic to set the weights
+
+                    //if (arc.IsClosed)
+                    //{
+                    //    var cc = new NurbsCurve(3, 8);
+
+                    //    for (var i = 0; i < cc.Points.Count; i++)
+                    //    {
+                    //        var phase = (double)i / (double)(cc.Points.Count) * Math.PI * 2.0;
+                    //        var _x = Math.Cos(phase);
+                    //        var _y = Math.Sin(phase);
+                    //        var weight = 1.0;
+                    //        if (i % 2 == 1)
+                    //        {
+                    //            _x *= Math.Sqrt(2.0);
+                    //            _y *= Math.Sqrt(2.0);
+                    //            weight = 1.0;
+                    //        }
+                    //        var p = new Point3d(_x, _y, 0) * arc.Arc.Radius;
+                    //        p = (Point3d)(arc.Arc.Plane.XAxis * p.X + arc.Arc.Plane.YAxis * p.Y + arc.Arc.Plane.ZAxis * p.Z);
+                    //        p += arc.Arc.Center;
+                    //        cc.Points.SetPoint(i, p);
+                    //        cc.Points.SetWeight(i, weight);
+                    //    }
+                    //    ProcessCurve(cc, name + "_closed", flip);
+                    //}
+
+                    ProcessCurve(cc, name + "_closed", flip);
+                } else
+                {
+                    ProcessCurve(c, name, flip);
+                }
+             
             }
             else if (geom is PolyCurve)
             {
@@ -155,7 +224,7 @@ namespace MNML
 
             if (vertices.Count > 0)
             {
-                AbcWriterAddCurve(instance, "/" + name, vertices.ToArray(), pointCount, degree, isPeriodic, flip);
+                AbcWriterAddCurve(instance, "/" + name + "_d" + degree, vertices.ToArray(), pointCount, degree, isPeriodic, flip);
             }
         }
 
