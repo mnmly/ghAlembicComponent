@@ -202,31 +202,19 @@ namespace MNML
                     {
                         var mesh = meshes[j] as Mesh;
                         var materialName = materialNames.Count > j ? materialNames[j] : "Default";
-                        mesh.Faces.ConvertQuadsToTriangles();
+
                         mesh.Normals.ComputeNormals();
 
-                        List<float> uvs = new List<float>();
-                        List<float> normals = new List<float>();
-
-                        foreach (var uv in mesh.TextureCoordinates)
-                        {
-                            uvs.Add(uv.X);
-                            uvs.Add(uv.Y);
-                        }
-
-                        foreach (var normal in mesh.Normals)
-                        {
-                            normals.Add(normal.X);
-                            normals.Add(normal.Y);
-                            normals.Add(normal.Z);
-                        }
+                        var uvs = mesh.TextureCoordinates.ToFloatArray();
+                        var normals = mesh.Normals.ToFloatArray();
+                        var faces = mesh.Faces.ToIntArray(true);
 
                         AbcWriterAddPolyMesh(instance, "/" + name,
                             materialName,
                             mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
-                            normals.ToArray(), normals.Count,
-                            uvs.ToArray(), uvs.Count,
-                            mesh.Faces.ToIntArray(true), mesh.Faces.Count * 3, mesh.Faces.Count, flip);
+                            normals, normals.Length,
+                            uvs, uvs.Length,
+                            faces, faces.Length, faces.Length / 3, flip);
                     } else if (meshes[j] is Curve)
                     {
                         ProcessCurve(meshes[j] as Curve, name, flip);
@@ -250,7 +238,7 @@ namespace MNML
 
          
             // Finally assign the spiral to the output parameter.
-            debouncer.Debounce(action);
+                debouncer.Debounce(action);
         }
 
         /// <summary>

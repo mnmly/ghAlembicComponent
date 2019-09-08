@@ -8,6 +8,8 @@
     <RootNamespace>GhAlembic</RootNamespace>
     <AssemblyName>GhAlembic</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <RhinoPluginType>gha</RhinoPluginType>
+    <RhinoMacLauncher>app</RhinoMacLauncher>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
