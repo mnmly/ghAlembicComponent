@@ -26,6 +26,9 @@ namespace MNML
             float[] uvs, int numUVs,
             int[] faces, int numFaces, int numFaceCount, bool _flipAxis);
 
+        [DllImport("ghAlembic")] static extern void AbcWriterAddCurve(IntPtr instance, String name,
+            float[] vertices, int numVertices, 
+            int degree, bool periodic, bool _flipAxis);
 
         IntPtr instance;
         WebSocket socket = null;
@@ -55,7 +58,7 @@ namespace MNML
             // You can often supply default values when creating parameters.
             // All parameters must have the correct access type. If you want 
             // to import lists or trees of values, modify the ParamAccess flag.
-            pManager.AddMeshParameter("Mesh", "M", "Mesh", GH_ParamAccess.list);
+            pManager.AddGeometryParameter("Geometry", "G", "Geometry (Curve or Mesh)", GH_ParamAccess.list);
             pManager.AddTextParameter("Object Names", "ON", "Object Names", GH_ParamAccess.list);
             pManager.AddTextParameter("Material Names", "MN", "Material Names", GH_ParamAccess.list);
             pManager.AddTextParameter("Output Path", "P", "Output Path", GH_ParamAccess.item);
@@ -84,6 +87,142 @@ namespace MNML
             //pManager.HideParameter(0);
         }
 
+        protected void ProcessCurve(Curve geom, string name, bool flip)
+        {
+            List<float> vertices = new List<float>();
+            bool isPeriodic = false;
+            int pointCount = 0;
+            int degree = 0;
+
+            if (geom is PolyCurve)
+            {
+                var curve = geom as PolyCurve;
+                for (var i = 0; i < curve.SegmentCount; i++)
+                {
+                    var seg = curve.SegmentCurve(i);
+                    ProcessCurve(seg, name + "-segment-" + i, flip);
+                }
+            }
+            else if (geom is NurbsCurve)
+            {
+                var curve = geom as NurbsCurve;
+                var points = curve.Points;
+                for (var i = 0; i < points.Count; i++)
+                {
+                    vertices.Add((float)points[i].X);
+                    vertices.Add((float)points[i].Y);
+                    vertices.Add((float)points[i].Z);
+                }
+                pointCount = points.Count;
+                isPeriodic = curve.IsPeriodic;
+                degree = curve.Degree;
+            } else if (geom is LineCurve)
+            {
+                var curve = geom as LineCurve;
+                
+                vertices.Add((float)curve.PointAtStart.X);
+                vertices.Add((float)curve.PointAtStart.Y);
+                vertices.Add((float)curve.PointAtStart.Z);
+                vertices.Add((float)curve.PointAtEnd.X);
+                vertices.Add((float)curve.PointAtEnd.Y);
+                vertices.Add((float)curve.PointAtEnd.Z);
+
+                pointCount = 2;
+                isPeriodic = curve.IsPeriodic;
+                degree = curve.Degree;
+
+            } else if (geom is PolylineCurve)
+            {
+                var curve = geom as PolylineCurve;
+
+                for (var i = 0; i < curve.PointCount; i++)
+                {
+                    var p = curve.Point(i);
+                    vertices.Add((float)p.X);
+                    vertices.Add((float)p.Y);
+                    vertices.Add((float)p.Z);
+                }
+
+                pointCount = curve.PointCount;
+                isPeriodic = curve.IsPeriodic;
+                degree = curve.Degree;
+
+            }
+            else if (geom is ArcCurve)
+            {
+                var arc = geom as ArcCurve;
+                var c = geom.ToNurbsCurve();
+                
+                var center = arc.Arc.Center;
+                var radius = arc.Arc.Radius;
+
+                var points = new List<double>();
+                var weights = new List<double>();
+                for (var i = 0; i < c.Points.Count; i++)
+                {
+                    var p = new Point3d();
+                    if (i % 2 == 0)
+                    {
+                        points.Add(c.Points[i].X - p.X);
+                        points.Add(c.Points[i].Y - p.Y);
+                        points.Add(c.Points[i].Z - p.Z);
+                    }
+                    else
+                    {
+                        p = arc.Arc.Center;
+                        p.X *= 1.0 - c.Points[i].Weight;
+                        p.Y *= 1.0 - c.Points[i].Weight;
+                        p.Z *= 1.0 - c.Points[i].Weight;
+                        points.Add(c.Points[i].X + p.X);
+                        points.Add(c.Points[i].Y + p.Y);
+                        points.Add(c.Points[i].Z + p.Z);
+                    }
+                    weights.Add(c.Points[i].Weight);
+                }
+
+                var cc = new NurbsCurve(c.Degree, c.Points.Count - 1);
+                for (var i = 0; i < cc.Points.Count; i++)
+                {
+                    var w = 1.0;
+                    cc.Points.SetPoint(i, points[i * 3 + 0], points[i * 3 + 1], points[i * 3 + 2], w);
+                }
+                // @TODO: use the proper api from Alembic to set the weights
+
+                //if (arc.IsClosed)
+                //{
+                //    var cc = new NurbsCurve(3, 8);
+
+                //    for (var i = 0; i < cc.Points.Count; i++)
+                //    {
+                //        var phase = (double)i / (double)(cc.Points.Count) * Math.PI * 2.0;
+                //        var _x = Math.Cos(phase);
+                //        var _y = Math.Sin(phase);
+                //        var weight = 1.0;
+                //        if (i % 2 == 1)
+                //        {
+                //            _x *= Math.Sqrt(2.0);
+                //            _y *= Math.Sqrt(2.0);
+                //            weight = 1.0;
+                //        }
+                //        var p = new Point3d(_x, _y, 0) * arc.Arc.Radius;
+                //        p = (Point3d)(arc.Arc.Plane.XAxis * p.X + arc.Arc.Plane.YAxis * p.Y + arc.Arc.Plane.ZAxis * p.Z);
+                //        p += arc.Arc.Center;
+                //        cc.Points.SetPoint(i, p);
+                //        cc.Points.SetWeight(i, weight);
+                //    }
+                //    ProcessCurve(cc, name + "_closed", flip);
+                //}
+
+                ProcessCurve(cc, name + (arc.IsClosed ? "_closed" : ""), flip);
+            }
+           
+
+            if (vertices.Count > 0)
+            {
+                AbcWriterAddCurve(instance, "/" + name + "_d" + degree, vertices.ToArray(), pointCount, degree, isPeriodic, flip);
+            }
+        }
+
         /// <summary>
         /// This is the method that actually does the work.
         /// </summary>
@@ -93,7 +232,7 @@ namespace MNML
         {
             // First, we need to retrieve all data from the input parameters.
             // We'll start by declaring variables and assigning them starting values.
-            var meshes = new List<Mesh>();
+            var meshes = new List<GeometryBase>();
             var objectNames = new List<String>();
             var materialNames = new List<String>();
             var collectionName = "";
@@ -120,22 +259,30 @@ namespace MNML
 
                 for (int j = 0; j < meshes.Count; j++)
                 {
-                    var mesh = meshes[j];
                     var name = objectNames.Count > j ? objectNames[j] : ("object-" + j);
-                    var materialName = materialNames.Count > j ? materialNames[j] : "Default";
                     names.Add(name);
-                    mesh.Normals.ComputeNormals();
 
-                    var uvs = mesh.TextureCoordinates.ToFloatArray();
-                    var normals = mesh.Normals.ToFloatArray();
-                    var faces = mesh.Faces.ToIntArray(true);
+                    if (meshes[j] is Mesh)
+                    {
+                        var mesh = meshes[j] as Mesh;
+                        var materialName = materialNames.Count > j ? materialNames[j] : "Default";
 
-                    AbcWriterAddPolyMesh(instance, "/" + name,
-                        materialName,
-                        mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
-                        normals, normals.Length,
-                        uvs, uvs.Length,
-                        faces, faces.Length, faces.Length / 3, flip);
+                        mesh.Normals.ComputeNormals();
+
+                        var uvs = mesh.TextureCoordinates.ToFloatArray();
+                        var normals = mesh.Normals.ToFloatArray();
+                        var faces = mesh.Faces.ToIntArray(true);
+
+                        AbcWriterAddPolyMesh(instance, "/" + name,
+                            materialName,
+                            mesh.Vertices.ToFloatArray(), mesh.Vertices.Count * 3,
+                            normals, normals.Length,
+                            uvs, uvs.Length,
+                            faces, faces.Length, faces.Length / 3, flip);
+                    } else if (meshes[j] is Curve)
+                    {
+                        ProcessCurve(meshes[j] as Curve, name, flip);
+                    }
                 }
 
                 AbcWriterClose(instance);
