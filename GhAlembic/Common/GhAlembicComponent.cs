@@ -210,8 +210,8 @@ namespace MNML
             DA.GetData(4, ref flip);
             DA.GetData(6, ref collectionName);
 
-            //Action action = () =>
-            //{
+            Action action = () =>
+            {
 
                 instance = AbcWriterCreateInstance();
                 AbcWriterOpen(instance, path);
@@ -272,11 +272,11 @@ namespace MNML
                     var jsonString = JsonConvert.SerializeObject(payload);
                     socket.Send(jsonString);
                 }
-            //};
+            };
 
-         
+            //action();
             // Finally assign the spiral to the output parameter.
-                //debouncer.Debounce(action);
+            debouncer.Debounce(action);
         }
 
         /// <summary>
